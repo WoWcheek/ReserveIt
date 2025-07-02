@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using ReserveIt.BLL.DTOs;
+using ReserveIt.BLL.Exceptions;
 using ReserveIt.BLL.Interfaces;
 using ReserveIt.DAL.Context;
 using ReserveIt.DAL.Models;
@@ -27,7 +28,7 @@ public class AuthService : IAuthService
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == loginDto.Username);
 
         if (user is null || !VerifyPassword(loginDto.Password, user.PasswordHash))
-            return string.Empty;
+            throw new UnauthorizedException("Invalid username or password");
 
         return CreateToken(user);
     }
@@ -35,7 +36,7 @@ public class AuthService : IAuthService
     public async Task<bool> Register(LoginDTO registerDto)
     {
         if (await _context.Users.AnyAsync(u => u.Username == registerDto.Username))
-            return false;
+            throw new ConflictException("Username already exists");
 
         var passwordHash = HashPassword(registerDto.Password);
 

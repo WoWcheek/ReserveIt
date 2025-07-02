@@ -28,15 +28,13 @@ public class RoomsController : ControllerBase
     public async Task<ActionResult<RoomDTO>> GetRoom(int id)
     {
         var room = await _roomService.GetRoomByIdAsync(id);
-        return room is null
-            ? NotFound()
-            : Ok(room);
+        return Ok(room);
     }
 
     [HttpPost]
-    public async Task<ActionResult<RoomDTO>> CreateRoom(CreateRoomDTO RoomDTO)
+    public async Task<ActionResult<RoomDTO>> CreateRoom(CreateRoomDTO roomDto)
     {
-        var room = await _roomService.CreateRoomAsync(RoomDTO);
+        var room = await _roomService.CreateRoomAsync(roomDto);
         return CreatedAtAction(nameof(GetRoom), new { id = room.Id }, room);
     }
 }

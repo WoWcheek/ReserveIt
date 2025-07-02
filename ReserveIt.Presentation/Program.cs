@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using ReserveIt.BLL.Interfaces;
 using ReserveIt.BLL.Services;
 using ReserveIt.DAL.Context;
+using ReserveIt.Presentation.Middleware;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -60,6 +62,21 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.InvalidModelStateResponseFactory = actionContext =>
+    {
+        var errors = actionContext.ModelState
+            .Where(e => e.Value?.Errors.Count > 0)
+            .ToDictionary(
+                kvp => kvp.Key,
+                kvp => kvp.Value?.Errors.Select(e => e.ErrorMessage).ToArray() ?? Array.Empty<string>()
+            );
+
+        throw new ReserveIt.BLL.Exceptions.ValidationException(errors);
+    };
+});
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -67,6 +84,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseErrorHandling();
 
 app.UseHttpsRedirection();
 app.UseAuthentication();

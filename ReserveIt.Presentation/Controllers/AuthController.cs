@@ -18,24 +18,14 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<IActionResult> Register(LoginDTO registerDto)
     {
-        var result = await _authService.Register(registerDto);
-        if (!result)
-        {
-            return BadRequest("Username already exists");
-        }
-
-        return Ok("User registered successfully");
+        await _authService.Register(registerDto);
+        return Ok(new { message = "User registered successfully" });
     }
 
     [HttpPost("login")]
     public async Task<IActionResult> Login(LoginDTO loginDto)
     {
         var token = await _authService.Login(loginDto);
-        if (string.IsNullOrEmpty(token))
-        {
-            return Unauthorized("Invalid username or password");
-        }
-
-        return Ok(new { Token = token });
+        return Ok(new { token });
     }
 }

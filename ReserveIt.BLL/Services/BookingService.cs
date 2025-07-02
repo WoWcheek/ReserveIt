@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using ReserveIt.BLL.DTOs;
+using ReserveIt.BLL.Exceptions;
 using ReserveIt.BLL.Interfaces;
 using ReserveIt.DAL.Context;
 using ReserveIt.DAL.Models;
@@ -29,72 +30,72 @@ public class BookingService : IBookingService
             .ToListAsync();
     }
 
-    public async Task<BookingDTO?> GetBookingByIdAsync(int id)
+    public async Task<BookingDTO> GetBookingByIdAsync(int id)
     {
         var booking = await _context.Bookings
             .Include(b => b.Room)
             .FirstOrDefaultAsync(b => b.Id == id);
 
         return booking is null
-            ? null
+            ? throw new NotFoundException($"Booking with ID {id} not found")
             : new BookingDTO(
                 booking.Id,
                 booking.RoomId,
-                booking.Room?.Name ?? "Unknown",
+                booking.Room?.Name ?? string.Empty,
                 booking.StartTime,
                 booking.EndTime,
                 booking.BookedBy);
     }
 
-    public async Task<(bool IsSuccess, string? ErrorMessage, BookingDTO? Booking)> CreateBookingAsync(CreateBookingDTO BookingDTO)
+    public async Task<BookingDTO> CreateBookingAsync(CreateBookingDTO bookingDto)
     {
-        if (BookingDTO.EndTime <= BookingDTO.StartTime)
+        if (bookingDto.EndTime <= bookingDto.StartTime)
         {
-            return (false, "End time must be after start time", null);
+            throw new BadRequestException("End time must be after start time");
         }
 
-        if (BookingDTO.StartTime < DateTime.Now)
+        if (bookingDto.StartTime < DateTime.Now)
         {
-            return (false, "Cannot book in the past", null);
+            throw new BadRequestException("Cannot book in the past");
         }
 
-        var room = await _context.Rooms.FindAsync(BookingDTO.RoomId);
+        var room = await _context.Rooms.FindAsync(bookingDto.RoomId);
         if (room is null)
         {
-            return (false, "Room not found", null);
+            throw new NotFoundException($"Room with ID {bookingDto.RoomId} not found");
         }
 
-        var isRoomAvailable = await IsRoomAvailable(BookingDTO.RoomId, BookingDTO.StartTime, BookingDTO.EndTime);
+        var isRoomAvailable = await IsRoomAvailable(bookingDto.RoomId, bookingDto.StartTime, bookingDto.EndTime);
         if (!isRoomAvailable)
         {
-            return (false, "Room is already booked for this time", null);
+            throw new ConflictException("Room is already booked for this time");
         }
 
         var booking = new Booking
         {
-            RoomId = BookingDTO.RoomId,
-            StartTime = BookingDTO.StartTime,
-            EndTime = BookingDTO.EndTime,
-            BookedBy = BookingDTO.BookedBy
+            RoomId = bookingDto.RoomId,
+            StartTime = bookingDto.StartTime,
+            EndTime = bookingDto.EndTime,
+            BookedBy = bookingDto.BookedBy
         };
 
         _context.Bookings.Add(booking);
         await _context.SaveChangesAsync();
 
-        return (true, null, new BookingDTO(
+        return new BookingDTO(
             booking.Id,
             booking.RoomId,
             room.Name,
             booking.StartTime,
             booking.EndTime,
-            booking.BookedBy));
+            booking.BookedBy);
     }
 
     public async Task<bool> DeleteBookingAsync(int id)
     {
         var booking = await _context.Bookings.FindAsync(id);
         if (booking is null)
-            return false;
+            throw new NotFoundException($"Booking with ID {id} not found");
 
         _context.Bookings.Remove(booking);
         await _context.SaveChangesAsync();

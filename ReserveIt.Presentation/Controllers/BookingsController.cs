@@ -28,27 +28,20 @@ public class BookingsController : ControllerBase
     public async Task<ActionResult<BookingDTO>> GetBooking(int id)
     {
         var booking = await _bookingService.GetBookingByIdAsync(id);
-        return booking is null
-            ? NotFound()
-            : Ok(booking);
+        return Ok(booking);
     }
 
     [HttpPost]
-    public async Task<ActionResult<BookingDTO>> CreateBooking(CreateBookingDTO BookingDTO)
+    public async Task<ActionResult<BookingDTO>> CreateBooking(CreateBookingDTO createBookingDTO)
     {
-        var (isSuccess, errorMessage, booking) = await _bookingService.CreateBookingAsync(BookingDTO);
-
-        return isSuccess
-            ? CreatedAtAction(nameof(GetBooking), new { id = booking!.Id }, booking)
-            : BadRequest(errorMessage);
+        var booking = await _bookingService.CreateBookingAsync(createBookingDTO);
+        return CreatedAtAction(nameof(GetBooking), new { id = booking.Id }, booking);
     }
 
     [HttpDelete("{id}")]
     public async Task<ActionResult> DeleteBooking(int id)
     {
-        var isDeleted = await _bookingService.DeleteBookingAsync(id);
-        return isDeleted
-            ? NoContent()
-            : NotFound();
+        await _bookingService.DeleteBookingAsync(id);
+        return NoContent();
     }
 }
